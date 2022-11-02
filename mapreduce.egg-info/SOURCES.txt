@@ -1,0 +1,7 @@
+setup.py
+mapreduce.egg-info/PKG-INFO
+mapreduce.egg-info/SOURCES.txt
+mapreduce.egg-info/dependency_links.txt
+mapreduce.egg-info/entry_points.txt
+mapreduce.egg-info/requires.txt
+mapreduce.egg-info/top_level.txt

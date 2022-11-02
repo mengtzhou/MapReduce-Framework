@@ -1,0 +1,99 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+case $1 in
+	"start")
+	if pgrep -f mapreduce-manager &> /dev/null | pgrep -f mapreduce-worker &> /dev/null; then
+		echo "Error: mapreduce-manager is already running"
+		exit 1
+	else 
+		echo "start mapreduce ..."
+		mkdir -p var/log
+		rm -f var/log/mapreduce-manager.log var/log/mapreduce-worker-6002.log var/log/mapreduce-worker-6001.log
+		mapreduce-manager --host localhost --port 6000 --logfile var/log/mapreduce-manager.log &
+		sleep 2  # give the Manager time to start
+		mapreduce-worker --host localhost --port 6001 --manager-host localhost --manager-port 6000 --logfile var/log/mapreduce-worker-6001.log &
+		mapreduce-worker --host localhost --port 6002 --manager-host localhost --manager-port 6000 --logfile var/log/mapreduce-worker-6002.log &
+	fi
+	;;
+
+	"stop")
+	# Detect GNU vs BSD netcat. We need netcat to close the connection after
+	# sending a message, which requires different options.
+	set +o pipefail  # Avoid erroneous failures due to grep returning non-zero
+	if nc -h 2>&1 | grep -q "\-c"; then
+	  NC="nc -c"
+	elif nc -h 2>&1 | grep -q "\-N"; then
+	  NC="nc -N"
+	elif nc -h 2>&1 | grep -q "\-C"; then
+	  NC="nc -C"
+	else
+	  echo "Error detecting netcat version."
+	  exit 1
+	fi
+	set -o pipefail
+	echo '{"message_type": "shutdown"}' | $NC localhost 6000 || true
+	sleep 2  # give the Manager time to receive signal and send to Workers
+	echo "stopping mapreduce ..."
+	if pgrep -f mapreduce-manager &> /dev/null; then
+	  echo "killing mapreduce manager ..."
+	  pkill -f mapreduce-manager || true
+	fi
+	if pgrep -f mapreduce-worker &> /dev/null; then
+	  echo "killing mapreduce worker ..."
+	  pkill -f mapreduce-worker || true
+	fi
+	;;
+
+	"status")
+	if pgrep -f mapreduce-manager &> /dev/null; then
+		echo "manager running"
+	else
+		echo "manager not running"
+	fi
+	if pgrep -f mapreduce-worker &> /dev/null; then
+		echo "worker running"
+	else 
+		echo "working not running"
+	fi
+	;;
+
+	"restart")
+	set +o pipefail  # Avoid erroneous failures due to grep returning non-zero
+	if nc -h 2>&1 | grep -q "\-c"; then
+	  NC="nc -c"
+	elif nc -h 2>&1 | grep -q "\-N"; then
+	  NC="nc -N"
+	elif nc -h 2>&1 | grep -q "\-C"; then
+	  NC="nc -C"
+	else
+	  echo "Error detecting netcat version."
+	  exit 1
+	fi
+	set -o pipefail
+	echo '{"message_type": "shutdown"}' | $NC localhost 6000 || true
+	sleep 2  # give the Manager time to receive signal and send to Workers
+	echo "stopping mapreduce ..."
+	if pgrep -f mapreduce-manager &> /dev/null; then
+	  echo "killing mapreduce manager ..."
+	  pkill -f mapreduce-manager || true
+	fi
+	if pgrep -f mapreduce-worker &> /dev/null; then
+	  echo "killing mapreduce worker ..."
+	  pkill -f mapreduce-worker || true
+	fi
+	if pgrep -f mapreduce-manager &> /dev/null | pgrep -f mapreduce-worker &> /dev/null; then
+		echo "Error: mapreduce-manager is already running"
+		exit 1
+	else 
+		echo "start mapreduce ..."
+		mkdir -p var/log
+		rm -f var/log/mapreduce-manager.log var/log/mapreduce-worker-6002.log var/log/mapreduce-worker-6001.log
+		mapreduce-manager --host localhost --port 6000 --logfile var/log/mapreduce-manager.log &
+		sleep 2  # give the Manager time to start
+		mapreduce-worker --host localhost --port 6001 --manager-host localhost --manager-port 6000 --logfile var/log/mapreduce-worker-6001.log &
+		mapreduce-worker --host localhost --port 6002 --manager-host localhost --manager-port 6000 --logfile var/log/mapreduce-worker-6002.log &
+	fi
+	
+esac
+
